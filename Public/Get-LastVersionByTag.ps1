@@ -4,7 +4,7 @@
 		[string]$TagFilter
 	)
 
-	$AllVersionTags = git tag -l --sort=-version:refname $TagFilter
+	[array]$AllVersionTags = git tag -l --sort=-version:refname $TagFilter
 	if($AllVersionTags.Count -ge 1) {
 		return [Version]($AllVersionTags[0])
 	} else {
