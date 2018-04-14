@@ -1,17 +1,20 @@
-﻿Import-Module $BuildRoot\BuildTools -Force
+﻿# Set-StrictMode -Version Latest
 
 $ProjectName      = ($BuildRoot -split '\\')[-1]
 $ArtifactPath     = "$BuildRoot\Artifacts"
 $ArtifactFullPath = "$ArtifactPath\$ProjectName.zip"
 
-task . InstallDependencies, <# Analyze, #> Test, Clean, ComputeVersionInfo, SetVersionInManifest, Build
+task . <# Analyze, #> Test, SetVersion, BuildArtifact
 
+# Installs other modules we might need and imports the build utils module itself
 task InstallDependencies {
 	Install-Module Pester -Scope CurrentUser
 	# Install-Module PSScriptAnalyzer -Scope CurrentUser
+
+	Import-Module "$BuildRoot\$ProjectName.psd1" -Force
 }
 
-# task Analyze {
+# task Analyze InstallDependencies,{
 # 	$scriptAnalyzerParams = @{
 # 		Path = "$BuildRoot\"
 # 		Severity = @('Error', 'Warning')
@@ -28,7 +31,7 @@ task InstallDependencies {
 # 	}
 # }
 
-task Test {
+task Test InstallDependencies,{
 	$invokePesterParams = @{
 		Path = '.\Tests\*'
 		Strict = $true
@@ -44,15 +47,14 @@ task Test {
 	assert($numberFails -eq 0) ('Failed "{0}" unit tests.' -f $numberFails)
 }
 
-task ComputeVersionInfo {
+# Determines the next version and sets it in the appropriate places
+task SetVersion InstallDependencies,{
 	$LastVersion = Get-LastVersionByTag
 	$LatestCommitMessages = Get-CommitsSinceVersionTag $LastVersion
 
 	$script:NewVersion = Bump-Version -StartingVersion $LastVersion -CommitMessages $LatestCommitMessages
 	$script:NewReleaseNotes = ""
-}
 
-task SetVersionInManifest ComputeVersionInfo,{
 	$ManifestFile = "$BuildRoot\$ProjectName.psd1"
 
 	(Get-Content $ManifestFile) `
@@ -68,7 +70,7 @@ task Clean {
 }
 
 # Builds an artifact into the artifact folder
-task Build {
+task BuildArtifact Clean,{
 	try {
 		$TempPath = New-TemporaryFolder
 
@@ -98,7 +100,7 @@ task Build {
 	}
 }
 
-task CreateGithubReleaseAndUpload ComputeVersionInfo,{
+task CreateGithubReleaseAndUpload <# Analyze, #> Test, SetVersion, BuildArtifact, {
 	$LastVersion = Get-LastVersionByTag
 	$LatestCommitMessages = Get-CommitsSinceVersionTag $LastVersion
 	$NewVersion = Bump-Version -StartingVersion $LastVersion -CommitMessages $LatestCommitMessages
