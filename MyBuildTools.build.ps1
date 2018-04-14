@@ -98,7 +98,7 @@ task Build {
 	}
 }
 
-task CreateGithubReleaseAndUpload {
+task CreateGithubReleaseAndUpload ComputeVersionInfo,{
 	$LastVersion = Get-LastVersionByTag
 	$LatestCommitMessages = Get-CommitsSinceVersionTag $LastVersion
 	$NewVersion = Bump-Version -StartingVersion $LastVersion -CommitMessages $LatestCommitMessages
