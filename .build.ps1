@@ -1,20 +1,21 @@
-﻿# Set-StrictMode -Version Latest
+﻿Set-StrictMode -Version Latest
 
-$ProjectName      = ($BuildRoot -split '\\')[-1]
+# $ProjectName      = ($BuildRoot -split '\\')[-1]
+$ProjectName      = $env:APPVEYOR_PROJECT_NAME
 $ArtifactPath     = "$BuildRoot\Artifacts"
 $ArtifactFullPath = "$ArtifactPath\$ProjectName.zip"
 
 task . <# Analyze, #> Test, SetVersion, BuildArtifact
 
-# Installs other modules we might need and imports the build utils module itself
-task InstallDependencies {
-	Install-Module Pester -Scope CurrentUser
-	# Install-Module PSScriptAnalyzer -Scope CurrentUser
+# Installs dependencies and imports the build utils module itself
+task Install {
+	Install-Module Pester -Scope CurrentUser -Force
+	# Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
 
 	Import-Module "$BuildRoot\$ProjectName.psd1" -Force
 }
 
-# task Analyze InstallDependencies,{
+# task Analyze Install,{
 # 	$scriptAnalyzerParams = @{
 # 		Path = "$BuildRoot\"
 # 		Severity = @('Error', 'Warning')
@@ -31,7 +32,7 @@ task InstallDependencies {
 # 	}
 # }
 
-task Test InstallDependencies,{
+task Test Install,{
 	$invokePesterParams = @{
 		Path = '.\Tests\*'
 		Strict = $true
@@ -48,7 +49,7 @@ task Test InstallDependencies,{
 }
 
 # Determines the next version and sets it in the appropriate places
-task SetVersion InstallDependencies,{
+task SetVersion Install,{
 	$LastVersion = Get-LastVersionByTag
 	$LatestCommitMessages = Get-CommitsSinceVersionTag $LastVersion
 
@@ -71,6 +72,8 @@ task Clean {
 
 # Builds an artifact into the artifact folder
 task BuildArtifact Clean,{
+	# Should skip this if not on master
+
 	try {
 		$TempPath = New-TemporaryFolder
 
@@ -100,7 +103,9 @@ task BuildArtifact Clean,{
 	}
 }
 
-task CreateGithubReleaseAndUpload <# Analyze, #> Test, SetVersion, BuildArtifact, {
+task DeployGithub <# Analyze, #> Test, SetVersion, BuildArtifact, {
+	# Should skip this if not on master
+
 	$LastVersion = Get-LastVersionByTag
 	$LatestCommitMessages = Get-CommitsSinceVersionTag $LastVersion
 	$NewVersion = Bump-Version -StartingVersion $LastVersion -CommitMessages $LatestCommitMessages
