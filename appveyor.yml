@@ -1,0 +1,18 @@
+﻿image: WMF 5
+
+# only build pushes to master - can work on other branches without triggering builds
+branches:
+  only:
+    - master
+
+skip_tags: true
+
+install:
+- ps: |
+    Install-PackageProvider -Name NuGet -MinimumVersion '2.8.5.201' -Force -Verbose
+    Install-Module InvokeBuild -Force
+
+build: false
+
+test_script:
+- ps: Invoke-Build -Task Test
