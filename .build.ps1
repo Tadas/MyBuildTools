@@ -1,6 +1,7 @@
 ﻿Set-StrictMode -Version Latest
 
-$ProjectName      = ($BuildRoot -split '\\')[-1]
+# $ProjectName      = ($BuildRoot -split '\\')[-1]
+$ProjectName      = $env:APPVEYOR_PROJECT_NAME
 $ArtifactPath     = "$BuildRoot\Artifacts"
 $ArtifactFullPath = "$ArtifactPath\$ProjectName.zip"
 
@@ -102,7 +103,7 @@ task BuildArtifact Clean,{
 	}
 }
 
-task CreateGithubReleaseAndUpload <# Analyze, #> Test, SetVersion, BuildArtifact, {
+task DeployGithub <# Analyze, #> Test, SetVersion, BuildArtifact, {
 	# Should skip this if not on master
 
 	$LastVersion = Get-LastVersionByTag
