@@ -82,7 +82,8 @@ task BuildArtifact Clean,{
 			(-not $_.FullName.Contains("\Artifacts\")) -and
 			(-not $_.FullName.Contains("\BuildTools\")) -and
 			(-not $_.FullName.Contains("\Tests\")) -and
-			(-not $_.FullName.EndsWith(".build.ps1"))
+			(-not $_.FullName.EndsWith(".build.ps1")) -and
+			(-not $_.FullName.EndsWith("appveyor.yml"))
 
 		} | ForEach-Object {
 			$DestinationPath = [System.IO.Path]::Combine(
