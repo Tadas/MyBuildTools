@@ -19,6 +19,18 @@ task Install {
 	Install-Module Pester -Scope CurrentUser -Force
 	# Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
 
+	<#
+	# Download and import latest version of our build utils module
+	$output_path = Join-Path (Resolve-Path "$BuildRoot\BuildTime") "MyBuildTools.zip"
+	$download_url = ((Invoke-RestMethod https://api.github.com/repos/Tadas/MyBuildTools/releases/latest).assets | `
+		Where-Object name -like "MyBuildTools*.zip" | Select-Object -First 1).browser_download_url
+
+	[System.Net.WebClient]::new().DownloadFile($download_url, $output_path)
+	Expand-Archive -LiteralPath $output_path
+	Import-Module "$BuildRoot\BuildTime\MyBuildTools" -Force
+	#>
+
+	# We're building the same build utils module here, no need to download anything
 	Import-Module "$BuildRoot\$ProjectName.psd1" -Force
 }
 
@@ -92,7 +104,7 @@ task BuildArtifact Clean,SetVersion,{
 			(-not $_.FullName.Contains("\.vscode\")) -and
 			(-not $_.FullName.Contains("\.git")) -and
 			(-not $_.FullName.Contains("\Artifacts\")) -and
-			(-not $_.FullName.Contains("\BuildTools\")) -and
+			(-not $_.FullName.Contains("\BuildTime\")) -and
 			(-not $_.FullName.Contains("\Tests\")) -and
 			(-not $_.FullName.EndsWith(".build.ps1")) -and
 			(-not $_.FullName.EndsWith("appveyor.yml"))
