@@ -1,7 +1,14 @@
-﻿Set-StrictMode -Version Latest
+﻿Param(
+	[Version]$OverrideVersion = $null
+)
+Set-StrictMode -Version Latest
 
-# $ProjectName      = ($BuildRoot -split '\\')[-1]
-$ProjectName      = $env:APPVEYOR_PROJECT_NAME
+# No env vars when running locally...
+if([string]::IsNullOrEmpty($env:APPVEYOR_PROJECT_NAME)) {
+	$ProjectName = ($BuildRoot -split '\\')[-1]
+} else {
+	$ProjectName = $env:APPVEYOR_PROJECT_NAME
+}
 $ArtifactPath     = "$BuildRoot\Artifacts"
 $ArtifactFullPath = "$ArtifactPath\$ProjectName.zip"
 
@@ -50,10 +57,14 @@ task Test Install,{
 
 # Determines the next version and sets it in the appropriate places
 task SetVersion Install,{
-	$LastVersion = Get-LastVersionByTag
-	$LatestCommitMessages = Get-CommitsSinceVersionTag $LastVersion
+	if ($OverrideVersion -eq $null){
+		$LastVersion = Get-LastVersionByTag
+		$LatestCommitMessages = Get-CommitsSinceVersionTag $LastVersion
+		$script:NewVersion = Bump-Version -StartingVersion $LastVersion -CommitMessages $LatestCommitMessages
+	} else {
+		$script:NewVersion = $OverrideVersion
+	}
 
-	$script:NewVersion = Bump-Version -StartingVersion $LastVersion -CommitMessages $LatestCommitMessages
 	$script:NewReleaseNotes = ""
 
 	$ManifestFile = "$BuildRoot\$ProjectName.psd1"
@@ -71,7 +82,7 @@ task Clean {
 }
 
 # Builds an artifact into the artifact folder
-task BuildArtifact Clean,{
+task BuildArtifact Clean,SetVersion,{
 	# Should skip this if not on master
 
 	try {
@@ -104,12 +115,8 @@ task BuildArtifact Clean,{
 	}
 }
 
-task DeployGithub <# Analyze, #> Test, SetVersion, BuildArtifact, {
+task DeployGithub <# Analyze, #> Test, BuildArtifact, {
 	# Should skip this if not on master
-
-	$LastVersion = Get-LastVersionByTag
-	$LatestCommitMessages = Get-CommitsSinceVersionTag $LastVersion
-	$NewVersion = Bump-Version -StartingVersion $LastVersion -CommitMessages $LatestCommitMessages
 
 	New-GithubRelease `
 		-Uri          "https://api.github.com/repos/Tadas/$ProjectName/releases" `
