@@ -11,23 +11,31 @@ if([string]::IsNullOrEmpty($env:APPVEYOR_PROJECT_NAME)) {
 }
 $ArtifactPath     = "$BuildRoot\Artifacts"
 $ArtifactFullPath = "$ArtifactPath\$ProjectName.zip"
+$BuildTimeFolder  = "$BuildRoot\BuildTime"
 
 task . <# Analyze, #> Test, SetVersion, BuildArtifact
 
+task Clean {
+	$ArtifactPath,$BuildTimeFolder | ForEach-Object {
+		if (Test-Path -LiteralPath $_) { Remove-Item -LiteralPath $_ -Recurse -Force }
+		New-Item -ItemType Directory -Path $_ -Force | Out-Null
+	}
+}
+
 # Installs dependencies and imports the build utils module itself
-task Install {
+task Install Clean,{
 	Install-Module Pester -Scope CurrentUser -Force
 	# Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
 
 	<#
 	# Download and import latest version of our build utils module
-	$output_path = Join-Path (Resolve-Path "$BuildRoot\BuildTime") "MyBuildTools.zip"
+	$output_path = Join-Path (Resolve-Path $BuildTimeFolder) "MyBuildTools.zip"
 	$download_url = ((Invoke-RestMethod https://api.github.com/repos/Tadas/MyBuildTools/releases/latest).assets | `
 		Where-Object name -like "MyBuildTools*.zip" | Select-Object -First 1).browser_download_url
 
 	[System.Net.WebClient]::new().DownloadFile($download_url, $output_path)
-	Expand-Archive -LiteralPath $output_path
-	Import-Module "$BuildRoot\BuildTime\MyBuildTools" -Force
+	Expand-Archive -LiteralPath $output_path -Destination "$BuildTimeFolder\MyBuildTools"
+	Import-Module "$BuildTimeFolder\MyBuildTools" -Force
 	#>
 
 	# We're building the same build utils module here, no need to download anything
@@ -75,7 +83,7 @@ task SetVersion Install,{
 		$script:NewVersion = Bump-Version -StartingVersion $LastVersion -CommitMessages $LatestCommitMessages
 	} else {
 		$script:NewVersion = $OverrideVersion
-	}
+	} 
 
 	$script:NewReleaseNotes = ""
 
@@ -84,13 +92,6 @@ task SetVersion Install,{
 	(Get-Content $ManifestFile) `
 		-replace "ModuleVersion = .*", "ModuleVersion = '$NewVersion'" |
 	Out-File -FilePath $ManifestFile -Encoding utf8
-}
-
-task Clean {
-	if (Test-Path -Path $ArtifactPath) {
-		Remove-Item "$ArtifactPath/*" -Recurse -Force
-	}
-	New-Item -ItemType Directory -Path $ArtifactPath -Force | Out-Null
 }
 
 # Builds an artifact into the artifact folder
@@ -120,7 +121,7 @@ task BuildArtifact Clean,SetVersion,{
 			New-Item -ItemType File -Path $DestinationPath -Force | Out-Null
 			Copy-Item -LiteralPath $_.FullName -Destination $DestinationPath -Force
 		}
-		Compress-Archive -Path "$TempPath\*" -DestinationPath "$ArtifactPath\$ProjectName.zip" -Verbose -Force
+		Compress-Archive -Path "$TempPath\*" -DestinationPath $ArtifactFullPath -Verbose -Force
 
 	} finally {
 		if(Test-Path -PathType Container -LiteralPath $TempPath) { Remove-Item -Recurse $TempPath -Force }
