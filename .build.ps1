@@ -83,7 +83,12 @@ task SetVersion Install,{
 		$script:NewVersion = Bump-Version -StartingVersion $LastVersion -CommitMessages $LatestCommitMessages
 	} else {
 		$script:NewVersion = $OverrideVersion
-	} 
+	}
+
+	# If running in AppVeyor set it's version
+	if(-not [string]::IsNullOrEmpty($env:APPVEYOR_PROJECT_NAME)) {
+		Update-AppveyorBuild -Version "$($script:NewVersion)-$(Get-Date -Format 'yyyymmdd.HHmm')"
+	}
 
 	$script:NewReleaseNotes = ""
 
