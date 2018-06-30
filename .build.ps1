@@ -27,19 +27,20 @@ task Install Clean,{
 	Install-Module Pester -Scope CurrentUser -SkipPublisherCheck -Force
 	# Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
 
-	<#
-	# Download and import latest version of our build utils module
-	$output_path = Join-Path (Resolve-Path $BuildTimeFolder) "MyBuildTools.zip"
-	$download_url = ((Invoke-RestMethod https://api.github.com/repos/Tadas/MyBuildTools/releases/latest).assets | `
-		Where-Object name -like "MyBuildTools*.zip" | Select-Object -First 1).browser_download_url
+	# If we're building the build utils module itself, no need to download anything
+	if ($ProjectName -eq "MyBuildTools"){
+		Import-Module "$BuildRoot\$ProjectName.psd1" -Force
 
-	[System.Net.WebClient]::new().DownloadFile($download_url, $output_path)
-	Expand-Archive -LiteralPath $output_path -Destination "$BuildTimeFolder\MyBuildTools"
-	Import-Module "$BuildTimeFolder\MyBuildTools" -Force
-	#>
-
-	# We're building the same build utils module here, no need to download anything
-	Import-Module "$BuildRoot\$ProjectName.psd1" -Force
+	} else {
+		# Download and import latest version of our build utils module
+		$output_path = Join-Path (Resolve-Path $BuildTimeFolder) "MyBuildTools.zip"
+		$download_url = ((Invoke-RestMethod https://api.github.com/repos/Tadas/MyBuildTools/releases/latest).assets | `
+			Where-Object name -like "MyBuildTools*.zip" | Select-Object -First 1).browser_download_url
+	
+		[System.Net.WebClient]::new().DownloadFile($download_url, $output_path)
+		Expand-Archive -LiteralPath $output_path -Destination "$BuildTimeFolder\MyBuildTools"
+		Import-Module "$BuildTimeFolder\MyBuildTools" -Force
+	}
 }
 
 # task Analyze Install,{
