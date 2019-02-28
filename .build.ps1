@@ -26,6 +26,8 @@ task Clean {
 task Install Clean,{
 	Install-Module Pester -Scope CurrentUser -SkipPublisherCheck -Force
 	# Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
+	Install-Module PSDepend -Scope CurrentUser -SkipPublisherCheck -Force
+	Invoke-PSDepend -Confirm:$false
 
 	# If we're building the build utils module itself, no need to download anything
 	if ($ProjectName -eq "MyBuildTools"){
@@ -138,11 +140,14 @@ task DeployGithub <# Analyze, #> Test, BuildArtifact, {
 	# Should skip this if not on master
 
 	New-GithubRelease `
+		-ProjectName  $ProjectName `
 		-Uri          "https://api.github.com/repos/Tadas/$ProjectName/releases" `
 		-NewVersion   $NewVersion `
 		-ReleaseNotes $NewReleaseNotes `
 		-Draft        $true `
 		-PreRelease   $false `
-		-ArtifactPath $ArtifactFullPath
+		-ArtifactPath $ArtifactFullPath `
+		-UserName     "Tadas" `
+		-ApiKey       $env:GithubApiKey
 
 }

@@ -2,7 +2,7 @@
 
 environment:
   GithubApiKey:
-    secure: RNKZCETbNKm4H3Mi/ykEroQvSyVCOc3eg8/XKuLiAG7CPhNpKyLuisfj68aexqD1
+    secure: yZd8NUxin8d4N8CBNZTtNuLHaQjPPtBvEFk0qhlCJLxiATwjX1rXIVhNovp6wd3w
 
 # only build pushes to master - can work on other branches without triggering builds
 branches:
