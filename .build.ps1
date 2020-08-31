@@ -13,6 +13,8 @@ $ArtifactPath     = "$BuildRoot\Artifacts"
 $ArtifactFullPath = "$ArtifactPath\$ProjectName.zip"
 $BuildTimeFolder  = "$BuildRoot\BuildTime"
 
+$ManifestFile = "$BuildRoot\$ProjectName.psd1"
+
 task . <# Analyze, #> Test, SetVersion, BuildArtifact
 
 task Clean {
@@ -38,7 +40,7 @@ task Install Clean,{
 		$output_path = Join-Path (Resolve-Path $BuildTimeFolder) "MyBuildTools.zip"
 		$download_url = ((Invoke-RestMethod https://api.github.com/repos/Tadas/MyBuildTools/releases/latest).assets | `
 			Where-Object name -like "MyBuildTools*.zip" | Select-Object -First 1).browser_download_url
-	
+
 		[System.Net.WebClient]::new().DownloadFile($download_url, $output_path)
 		Expand-Archive -LiteralPath $output_path -Destination "$BuildTimeFolder\MyBuildTools"
 		Import-Module "$BuildTimeFolder\MyBuildTools" -Force
@@ -53,7 +55,7 @@ task Install Clean,{
 # 		Verbose = $false
 # 		ExcludeRule = 'PSAvoidUsingWriteHost'
 # 	}
-	
+
 # 	$Results = Invoke-ScriptAnalyzer @scriptAnalyzerParams
 
 # 	if ($Results) {
@@ -95,11 +97,8 @@ task SetVersion Install,{
 
 	$script:NewReleaseNotes = ""
 
-	$ManifestFile = "$BuildRoot\$ProjectName.psd1"
-
-	(Get-Content $ManifestFile) `
-		-replace "ModuleVersion = .*", "ModuleVersion = '$NewVersion'" |
-	Out-File -FilePath $ManifestFile -Encoding utf8
+	(Get-Content $ManifestFile) -replace "ModuleVersion = .*", "ModuleVersion = '$NewVersion'" |
+		Out-File -FilePath $ManifestFile -Encoding utf8
 }
 
 # Builds an artifact into the artifact folder
@@ -129,6 +128,12 @@ task BuildArtifact Clean,SetVersion,{
 			New-Item -ItemType File -Path $DestinationPath -Force | Out-Null
 			Copy-Item -LiteralPath $_.FullName -Destination $DestinationPath -Force
 		}
+
+		$FunctionsToExport = (Get-ChildItem .\Public\ -File).Name | ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension($_) }
+
+		(Get-Content $ManifestFile) -replace "FunctionsToExport = .*", "FunctionsToExport = '$($FunctionsToExport -join "', '")'" |
+			Out-File -FilePath $ManifestFile -Encoding utf8
+
 		Compress-Archive -Path "$TempPath\*" -DestinationPath $ArtifactFullPath -Verbose -Force
 
 	} finally {
